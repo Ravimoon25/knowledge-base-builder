@@ -599,35 +599,6 @@ with tab1:
                 for failed in summary['failed_conversations']:
                     st.error(f"❌ {failed['id']}: {failed['error']}")
     
-    else:
-        # Show helpful instructions when no files uploaded
-        st.info("👆 Upload your conversation files above to get started")    
-    else:
-        # Show helpful instructions when no files uploaded
-        st.info("👆 Upload your conversation files above to get started")
-        
-        st.markdown("### 📋 Expected File Format")
-        
-        st.markdown("""
-        Your conversation files should contain:
-        - **Speaker identification** (Agent/Customer)
-        - **Message text** (What was said)
-        - **Optional**: Timestamp, conversation ID
-        
-        **Example CSV format:**
-        """)
-        
-        example_data = pd.DataFrame({
-            'speaker': ['Agent', 'Customer', 'Agent', 'Customer'],
-            'message': [
-                'Hello! How can I help you today?',
-                'I need help with my refund policy',
-                'I can help you with that. Our refund policy allows...',
-                'Thank you, that\'s helpful!'
-            ]
-        })
-        
-        st.dataframe(example_data, use_container_width=True)
 
 with tab2:
     # About section
