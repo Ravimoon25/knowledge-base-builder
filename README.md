@@ -1,132 +1,101 @@
 # 🧠 AI Knowledge Base Builder
 
-> Transform customer-agent conversations into structured knowledge bases automatically using AI
+> Transform customer-agent conversations into structured, searchable knowledge bases automatically using AI
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://your-app-url.streamlit.app)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://knowledge-base-builder-wzfflnkq94yfwy8oobeekg.streamlit.app/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+
+![Main Interface](docs/images/screenshot1_upload.png)
 
 ## 🎯 Overview
 
-AI Knowledge Base Builder automatically extracts question-answer pairs from historical customer service conversations and creates a curated knowledge base. Perfect for contact centers, customer support teams, and any organization looking to leverage their conversation history.
+AI Knowledge Base Builder is a production-ready application that automatically extracts question-answer pairs from customer service conversation transcripts using Claude AI, clusters similar questions to remove duplicates, and generates a clean, exportable knowledge base.
 
-## ✨ Features
+**Perfect for:**
+- 📞 Contact centers building FAQ databases
+- 💬 Customer support teams organizing conversation data
+- 🏢 Companies with large conversation archives
+- 🤖 Teams implementing AI chatbots that need knowledge bases
 
-- 📁 **Multi-format Support** - Upload CSV, Excel, or TXT files
-- 🤖 **AI-Powered Extraction** - Uses Claude AI to extract meaningful QA pairs
-- 🎯 **Smart Clustering** - Groups similar questions automatically
-- ✂️ **Deduplication** - Removes redundant information
-- 📊 **Interactive Dashboard** - Visualize and explore your knowledge base
-- 💾 **Multiple Export Formats** - JSON, CSV, Markdown
+## ✨ Key Features
 
-## 🚀 Quick Start
+### 🤖 AI-Powered Extraction
+- Leverages **Anthropic Claude Sonnet 4.5** for intelligent QA pair extraction
+- Automatically identifies information-seeking questions and their answers
+- Rewrites questions for clarity and standalone comprehension
+- Filters out chitchat, greetings, and non-informational exchanges
 
-### Try it Live
-[Launch App →](https://your-app-url.streamlit.app) *(Coming soon)*
+### 📁 Multi-Format Support
+- Upload **CSV**, **Excel (.xlsx)**, or **Text** files
+- Automatic speaker detection (Agent/Customer)
+- Smart column identification
+- Handles multiple conversations per file
 
-### Run Locally
-```bash
-# Clone the repository
-git clone https://github.com/YOUR-USERNAME/knowledge-base-builder.git
-cd knowledge-base-builder
+### 🔄 Batch Processing
+- Process multiple conversations simultaneously
+- Real-time progress tracking
+- Cost estimation before processing
+- Detailed success/failure reporting
 
-# Install dependencies
-pip install -r requirements.txt
+### 🎨 Smart Clustering & Deduplication
+- **OpenAI embeddings** for semantic similarity
+- **DBSCAN clustering** to group similar questions
+- Automatic duplicate detection and removal
+- Quality scoring with silhouette analysis
+- Reduces redundancy by 20-40% on average
 
-# Set up your API keys
-cp .streamlit/secrets.toml.example .streamlit/secrets.toml
-# Edit secrets.toml and add your API keys
+### 📊 Interactive Visualizations
+- 2D cluster visualization (UMAP/t-SNE/PCA)
+- Interactive scatter plots with hover tooltips
+- Cluster distribution charts
+- Quality metrics dashboard
 
-# Run the app
-streamlit run app.py
-```
+### 💾 Multiple Export Formats
+- **JSON** - Structured data for APIs
+- **CSV** - Easy to import into spreadsheets
+- **Markdown** - Human-readable documentation
+- Export both full and clustered versions
 
-## 📋 Requirements
+### 🔍 Search & Filter
+- Real-time search across QA pairs
+- Filter by source conversation
+- Search in both questions and answers
 
-- Python 3.9+
-- Anthropic API key (Claude)
-- OpenAI API key (for embeddings)
+## 🚀 Live Demo
 
-## 🏗️ Project Structure
-```
-knowledge-base-builder/
-├── app.py                    # Main Streamlit application
-├── requirements.txt          # Python dependencies
-├── src/                      # Source code modules
-│   ├── __init__.py
-│   ├── data_parser.py       # Data parsing utilities
-│   ├── extractor.py         # QA extraction logic
-│   ├── clusterer.py         # Clustering algorithms
-│   ├── representative.py    # Representative selection
-│   └── utils.py             # Helper functions
-├── prompts/                  # AI prompts
-│   ├── extraction_prompt.txt
-│   └── representative_prompt.txt
-├── tests/                    # Test data
-│   └── sample_conversations.csv
-└── docs/                     # Documentation
-    └── USER_GUIDE.md
-```
+**Try it now:** [AI Knowledge Base Builder](https://knowledge-base-builder-wzfflnkq94yfwy8oobeekg.streamlit.app/)
 
-## 🎬 How It Works
+## 📸 Screenshots
 
-1. **Upload Conversations** - Upload your customer-agent conversation transcripts
-2. **Extract Knowledge** - AI analyzes conversations and extracts QA pairs
-3. **Cluster & Deduplicate** - Similar questions are grouped together
-4. **Select Representatives** - Best QA pairs are selected for each topic
-5. **Export** - Download your curated knowledge base
+### Conversation Parsing
+![Parsing](docs/images/screenshot2_preview.png)
+
+### Batch Processing Results
+![Results](docs/images/screenshot3_results.png)
+
+### Clustering Analysis
+![Clustering](docs/images/screenshot4_clustering.png)
+
+### Interactive Visualization
+![Visualization](docs/images/screenshot5_visualization.png)
 
 ## 🛠️ Tech Stack
 
-- **Framework:** Streamlit
-- **AI Models:** Anthropic Claude (Sonnet 4.5)
-- **Embeddings:** OpenAI text-embedding-3-small
-- **Clustering:** scikit-learn (DBSCAN)
-- **Data Processing:** Pandas
+**Framework & UI:**
+- [Streamlit](https://streamlit.io/) - Web application framework
+- Python 3.9+
 
-## 📈 Roadmap
+**AI & ML:**
+- [Anthropic Claude](https://www.anthropic.com/) (Sonnet 4.5) - QA extraction
+- [OpenAI](https://openai.com/) (text-embedding-3-small) - Semantic embeddings
+- [scikit-learn](https://scikit-learn.org/) - DBSCAN clustering
+- [UMAP](https://umap-learn.readthedocs.io/) - Dimensionality reduction
 
-- [x] Project setup
-- [ ] File upload and parsing
-- [ ] Claude integration for extraction
-- [ ] Batch processing
-- [ ] Clustering implementation
-- [ ] Representative selection
-- [ ] Interactive dashboard
-- [ ] Export functionality
-- [ ] Streamlit Cloud deployment
+**Data Processing:**
+- [Pandas](https://pandas.pydata.org/) - Data manipulation
+- [NumPy](https://numpy.org/) - Numerical computing
+- [Plotly](https://plotly.com/) - Interactive visualizations
 
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Built with [Streamlit](https://streamlit.io/)
-- Powered by [Anthropic Claude](https://www.anthropic.com/)
-- Inspired by the research paper: "AI Knowledge Assist: An Automated Approach for the Creation of Knowledge Bases for Conversational AI Agents"
-
-## 📞 Contact
-
-Questions? Feel free to [open an issue](https://github.com/YOUR-USERNAME/knowledge-base-builder/issues)
-
----
-
-**⭐ Star this repo if you find it useful!**
-```
-
-**Replace `YOUR-USERNAME` with your actual GitHub username**
-
----
-
-### Step 3: Verify Repository Structure
-
-After creating the repository, you should see:
-```
-knowledge-base-builder/
-├── .gitignore         ✅ (Python template)
-├── LICENSE            ✅ (MIT)
-└── README.md          ✅ (Updated with above content)
+## 📋 How It Works
+```mermaid
