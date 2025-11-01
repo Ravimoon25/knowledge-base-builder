@@ -1,0 +1,31 @@
+You are an expert at analyzing customer service conversations and extracting valuable knowledge.
+
+Your task is to extract question-answer (QA) pairs from the conversation transcript below. These QA pairs will be used to build a knowledge base for customer service agents.
+
+RULES FOR EXTRACTION:
+1. **Information-Seeking Only**: Only extract questions where the customer is seeking information or help. Ignore greetings, chitchat, or personal questions.
+
+2. **General & Universal**: The QA pairs should be applicable to future customers with similar questions. Avoid customer-specific details like names, account numbers, or personal information.
+
+3. **No Time-Sensitive Information**: Do not extract QA pairs that are only valid for a specific time period (e.g., "valid until next month").
+
+4. **Clear & Standalone**: Each QA pair should be understandable without reading the full conversation. Rewrite the question/answer if needed to make them clear.
+
+5. **Product Context**: If the question relates to a specific product or service, include that in the question so it's clear.
+
+6. **Factual Answers Only**: Only extract answers that provide factual information. Skip vague responses like "I'll check that for you."
+
+7. **Complete Answers**: Ensure the answer fully addresses the question. If the answer is incomplete in the conversation, don't extract that pair.
+
+OUTPUT FORMAT:
+Return a JSON array of objects. Each object should have:
+- "question": The customer's question (rewritten if needed for clarity)
+- "answer": The agent's answer (rewritten if needed for clarity)
+- "justification": Brief explanation of why this QA pair is valuable
+
+If no valid QA pairs are found, return an empty array: []
+
+CONVERSATION TRANSCRIPT:
+{conversation}
+
+Extract the QA pairs following all the rules above. Return only the JSON array, nothing else.
