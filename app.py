@@ -5,6 +5,9 @@ Main Streamlit Application
 
 import streamlit as st
 import pandas as pd
+import pandas as pd
+import sys
+sys.path.append('.')
 
 # Page configuration - MUST be the first Streamlit command
 st.set_page_config(
@@ -119,7 +122,7 @@ with tab1:
     # File Preview Section
     if uploaded_files:
         st.markdown("---")
-        st.markdown("### 👁️ File Preview")
+        st.markdown("### 👁️ File Preview & Parsing")
         
         # Select file to preview
         file_to_preview = st.selectbox(
@@ -132,45 +135,138 @@ with tab1:
             # Find the selected file
             selected_file = next(f for f in uploaded_files if f.name == file_to_preview)
             
-            try:
-                # Try to read as CSV first
-                if selected_file.name.endswith('.csv'):
-                    df = pd.read_csv(selected_file)
-                    st.dataframe(df.head(10), use_container_width=True)
+            # Create tabs for raw data and parsed conversations
+            preview_tab1, preview_tab2 = st.tabs(["📄 Raw Data", "🔄 Parsed Conversations"])
+            
+            with preview_tab1:
+                try:
+                    # Try to read as CSV first
+                    if selected_file.name.endswith('.csv'):
+                        df = pd.read_csv(selected_file)
+                        st.dataframe(df.head(10), use_container_width=True)
+                        
+                        # Show basic stats
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Total Rows", len(df))
+                        with col2:
+                            st.metric("Total Columns", len(df.columns))
+                        with col3:
+                            st.metric("Preview Showing", min(10, len(df)))
                     
-                    # Show basic stats
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("Total Rows", len(df))
-                    with col2:
-                        st.metric("Total Columns", len(df.columns))
-                    with col3:
-                        st.metric("Preview Showing", min(10, len(df)))
-                
-                elif selected_file.name.endswith('.xlsx'):
-                    df = pd.read_excel(selected_file)
-                    st.dataframe(df.head(10), use_container_width=True)
+                    elif selected_file.name.endswith('.xlsx'):
+                        df = pd.read_excel(selected_file)
+                        st.dataframe(df.head(10), use_container_width=True)
+                        
+                        # Show basic stats
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Total Rows", len(df))
+                        with col2:
+                            st.metric("Total Columns", len(df.columns))
+                        with col3:
+                            st.metric("Preview Showing", min(10, len(df)))
                     
-                    # Show basic stats
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("Total Rows", len(df))
-                    with col2:
-                        st.metric("Total Columns", len(df.columns))
-                    with col3:
-                        st.metric("Preview Showing", min(10, len(df)))
+                    elif selected_file.name.endswith('.txt'):
+                        # Reset file pointer
+                        selected_file.seek(0)
+                        content = selected_file.read().decode('utf-8')
+                        st.text_area("File Content (First 1000 characters):", 
+                                    content[:1000], height=300)
+                        st.info(f"Total characters: {len(content)}")
+                    
+                except Exception as e:
+                    st.error(f"Error reading file: {str(e)}")
+            
+            with preview_tab2:
+                # Import parser
+                from src.data_parser import (
+                    parse_csv_conversations, 
+                    parse_excel_conversations,
+                    parse_text_conversations,
+                    validate_conversations,
+                    format_conversation_for_display
+                )
                 
-                elif selected_file.name.endswith('.txt'):
+                try:
                     # Reset file pointer
                     selected_file.seek(0)
-                    content = selected_file.read().decode('utf-8')
-                    st.text_area("File Content (First 1000 characters):", 
-                                content[:1000], height=300)
-                    st.info(f"Total characters: {len(content)}")
+                    
+                    # Parse based on file type
+                    if selected_file.name.endswith('.csv'):
+                        conversations = parse_csv_conversations(selected_file)
+                    elif selected_file.name.endswith('.xlsx'):
+                        conversations = parse_excel_conversations(selected_file)
+                    elif selected_file.name.endswith('.txt'):
+                        conversations = parse_text_conversations(selected_file)
+                    else:
+                        st.error("Unsupported file type")
+                        conversations = []
+                    
+                    # Validate conversations
+                    validation = validate_conversations(conversations)
+                    
+                    if validation['valid']:
+                        st.success("✅ Conversations parsed successfully!")
+                    else:
+                        st.warning("⚠️ Parsing completed with issues:")
+                        for issue in validation['issues']:
+                            st.warning(f"  • {issue}")
+                    
+                    # Show statistics
+                    st.markdown("#### 📊 Parsing Statistics")
+                    stats = validation['stats']
+                    
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Conversations", stats.get('total_conversations', 0))
+                    with col2:
+                        st.metric("Total Messages", stats.get('total_messages', 0))
+                    with col3:
+                        st.metric("Avg Messages", f"{stats.get('avg_messages_per_conversation', 0):.1f}")
+                    with col4:
+                        st.metric("Unique Speakers", stats.get('unique_speakers', 0))
+                    
+                    if stats.get('speakers'):
+                        st.info(f"👥 Detected speakers: {', '.join(stats['speakers'])}")
+                    
+                    # Show parsed conversations
+                    if conversations:
+                        st.markdown("#### 💬 Parsed Conversations Preview")
+                        
+                        # Select conversation to view
+                        conv_options = [f"{conv['id']} ({conv['num_messages']} messages)" 
+                                      for conv in conversations]
+                        
+                        selected_conv_idx = st.selectbox(
+                            "Select a conversation to view:",
+                            options=range(len(conversations)),
+                            format_func=lambda x: conv_options[x],
+                            key="conv_selector"
+                        )
+                        
+                        # Display selected conversation
+                        if selected_conv_idx is not None:
+                            conversation = conversations[selected_conv_idx]
+                            
+                            # Format and display
+                            formatted = format_conversation_for_display(conversation)
+                            st.text_area(
+                                "Conversation Preview:", 
+                                formatted, 
+                                height=400,
+                                key="conv_display"
+                            )
+                            
+                            # Store in session state for later use
+                            if 'parsed_conversations' not in st.session_state:
+                                st.session_state.parsed_conversations = {}
+                            
+                            st.session_state.parsed_conversations[file_to_preview] = conversations
                 
-            except Exception as e:
-                st.error(f"Error reading file: {str(e)}")
-        
+                except Exception as e:
+                    st.error(f"❌ Error parsing conversations: {str(e)}")
+                    st.info("💡 Make sure your file has 'speaker' and 'message' columns (or similar)")        
         st.markdown("---")
         
         # Configuration Section
