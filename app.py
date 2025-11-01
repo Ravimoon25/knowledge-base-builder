@@ -804,6 +804,20 @@ with st.sidebar:
                     st.error("❌ Connection test failed")
             except Exception as e:
                 st.error(f"❌ Error: {str(e)}")
+
+    # Test OpenAI Embeddings
+    if st.button("Test OpenAI Embeddings", key="test_embeddings"):
+        with st.spinner("Testing embeddings..."):
+            try:
+                from src.embeddings import get_openai_client, test_embeddings_connection
+                client = get_openai_client()
+                
+                if test_embeddings_connection(client):
+                    st.success("✅ OpenAI Embeddings connected!")
+                else:
+                    st.error("❌ Embeddings test failed")
+            except Exception as e:
+                st.error(f"❌ Error: {str(e)}")
     
     st.markdown("---")
     
