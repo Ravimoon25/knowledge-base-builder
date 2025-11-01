@@ -268,6 +268,119 @@ with tab1:
                     st.error(f"❌ Error parsing conversations: {str(e)}")
                     st.info("💡 Make sure your file has 'speaker' and 'message' columns (or similar)")        
         st.markdown("---")
+
+        st.markdown("---")
+        
+        # Single Conversation Extraction Demo
+        st.markdown("### 🤖 AI Extraction Demo")
+        st.info("👉 Try extracting QA pairs from a single conversation using Claude AI")
+        
+        if 'parsed_conversations' in st.session_state and file_to_preview in st.session_state.parsed_conversations:
+            conversations = st.session_state.parsed_conversations[file_to_preview]
+            
+            col1, col2 = st.columns([2, 1])
+            
+            with col1:
+                # Select conversation for extraction
+                conv_options = [f"{conv['id']} ({conv['num_messages']} messages)" 
+                              for conv in conversations]
+                
+                selected_conv_for_extraction = st.selectbox(
+                    "Select a conversation to extract knowledge from:",
+                    options=range(len(conversations)),
+                    format_func=lambda x: conv_options[x],
+                    key="extraction_conv_selector"
+                )
+            
+            with col2:
+                extraction_model = st.selectbox(
+                    "Claude Model:",
+                    options=["claude-sonnet-4-5-20250929", "claude-opus-4"],
+                    index=0,
+                    key="extraction_model"
+                )
+            
+            # Extract button
+            if st.button("🚀 Extract QA Pairs", type="primary", key="extract_single"):
+                from src.claude_client import get_claude_client
+                from src.extractor import extract_qa_pairs
+                
+                conversation = conversations[selected_conv_for_extraction]
+                
+                with st.spinner(f"🤖 Claude is analyzing conversation {conversation['id']}..."):
+                    try:
+                        # Get Claude client
+                        client = get_claude_client()
+                        
+                        # Extract QA pairs
+                        result = extract_qa_pairs(
+                            client=client,
+                            conversation=conversation,
+                            model=extraction_model
+                        )
+                        
+                        # Store result in session state
+                        if 'extraction_results' not in st.session_state:
+                            st.session_state.extraction_results = {}
+                        
+                        st.session_state.extraction_results[conversation['id']] = result
+                        
+                        # Display results
+                        if result['success']:
+                            st.success(f"✅ Extraction complete! Found {result['num_qa_pairs']} QA pairs")
+                            
+                            # Show statistics
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("QA Pairs Extracted", result['num_qa_pairs'])
+                            with col2:
+                                st.metric("Estimated Cost", f"${result['estimated_cost']:.4f}")
+                            with col3:
+                                st.metric("Input Tokens", result['input_tokens'])
+                            
+                            # Display extracted QA pairs
+                            if result['qa_pairs']:
+                                st.markdown("#### 📚 Extracted Knowledge")
+                                
+                                for idx, qa in enumerate(result['qa_pairs'], 1):
+                                    with st.expander(f"QA Pair {idx}: {qa.get('question', 'No question')[:80]}...", expanded=(idx == 1)):
+                                        st.markdown(f"**❓ Question:**")
+                                        st.info(qa.get('question', 'No question'))
+                                        
+                                        st.markdown(f"**✅ Answer:**")
+                                        st.success(qa.get('answer', 'No answer'))
+                                        
+                                        if 'justification' in qa:
+                                            st.markdown(f"**💡 Justification:**")
+                                            st.caption(qa['justification'])
+                            else:
+                                st.warning("No QA pairs found in this conversation")
+                        
+                        else:
+                            st.error(f"❌ Extraction failed: {result['error']}")
+                    
+                    except Exception as e:
+                        st.error(f"❌ Error during extraction: {str(e)}")
+                        st.exception(e)
+            
+            # Show previous results if they exist
+            if 'extraction_results' in st.session_state:
+                stored_results = st.session_state.extraction_results
+                if stored_results:
+                    st.markdown("---")
+                    st.markdown("#### 📊 Previous Extractions")
+                    
+                    for conv_id, result in stored_results.items():
+                        if result['success']:
+                            st.text(f"✅ {conv_id}: {result['num_qa_pairs']} QA pairs (${result['estimated_cost']:.4f})")
+                        else:
+                            st.text(f"❌ {conv_id}: Failed")
+```
+
+---
+
+
+
         
         # Configuration Section
         st.markdown("### ⚙️ Processing Configuration")
