@@ -377,8 +377,6 @@ with tab1:
                             st.text(f"❌ {conv_id}: Failed")
 ```
 
----
-
 
 
         
