@@ -375,11 +375,6 @@ with tab1:
                             st.text(f"✅ {conv_id}: {result['num_qa_pairs']} QA pairs (${result['estimated_cost']:.4f})")
                         else:
                             st.text(f"❌ {conv_id}: Failed")
-```
-
-
-
-        
         # Configuration Section
         st.markdown("### ⚙️ Processing Configuration")
         
