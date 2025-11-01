@@ -482,6 +482,23 @@ with st.sidebar:
     """)
     
     st.markdown("---")
+
+    
+    st.header("🔧 API Status")
+    
+    # Test Claude connection
+    if st.button("Test Claude API", key="test_api"):
+        with st.spinner("Testing connection..."):
+            try:
+                from src.claude_client import get_claude_client, test_claude_connection
+                client = get_claude_client()
+                
+                if test_claude_connection(client):
+                    st.success("✅ Claude API connected!")
+                else:
+                    st.error("❌ Connection test failed")
+            except Exception as e:
+                st.error(f"❌ Error: {str(e)}")
     
     st.header("🔗 Links")
     st.markdown("""
