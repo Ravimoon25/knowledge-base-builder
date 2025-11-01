@@ -545,51 +545,64 @@ with tab1:
                 st.markdown("---")
                 st.markdown("### 💾 Export Knowledge Base")
                 
+                # Import export function
+                from src.batch_processor import export_qa_pairs_to_dict
+                
                 col1, col2, col3 = st.columns(3)
                 
                 with col1:
                     # Export as JSON
-                    export_data = export_qa_pairs_to_dict(summary['all_qa_pairs'])
-                    json_str = json.dumps(export_data, indent=2)
-                    st.download_button(
-                        label="📄 Download JSON",
-                        data=json_str,
-                        file_name="knowledge_base.json",
-                        mime="application/json",
-                        use_container_width=True
-                    )
+                    try:
+                        export_data = export_qa_pairs_to_dict(summary['all_qa_pairs'])
+                        json_str = json.dumps(export_data, indent=2)
+                        st.download_button(
+                            label="📄 Download JSON",
+                            data=json_str,
+                            file_name="knowledge_base.json",
+                            mime="application/json",
+                            use_container_width=True
+                        )
+                    except Exception as e:
+                        st.error(f"JSON export error: {str(e)}")
                 
                 with col2:
                     # Export as CSV
-                    df = pd.DataFrame(export_qa_pairs_to_dict(summary['all_qa_pairs']))
-                    csv = df.to_csv(index=False)
-                    st.download_button(
-                        label="📊 Download CSV",
-                        data=csv,
-                        file_name="knowledge_base.csv",
-                        mime="text/csv",
-                        use_container_width=True
-                    )
+                    try:
+                        export_data = export_qa_pairs_to_dict(summary['all_qa_pairs'])
+                        df = pd.DataFrame(export_data)
+                        csv = df.to_csv(index=False)
+                        st.download_button(
+                            label="📊 Download CSV",
+                            data=csv,
+                            file_name="knowledge_base.csv",
+                            mime="text/csv",
+                            use_container_width=True
+                        )
+                    except Exception as e:
+                        st.error(f"CSV export error: {str(e)}")
                 
                 with col3:
                     # Export as Markdown
-                    md_lines = ["# Knowledge Base\n"]
-                    for idx, qa in enumerate(export_qa_pairs_to_dict(summary['all_qa_pairs']), 1):
-                        md_lines.append(f"## QA Pair {idx}\n")
-                        md_lines.append(f"**Question:** {qa['question']}\n")
-                        md_lines.append(f"**Answer:** {qa['answer']}\n")
-                        md_lines.append(f"**Source:** {qa['source']}\n")
-                        md_lines.append("---\n")
-                    
-                    md_str = "\n".join(md_lines)
-                    st.download_button(
-                        label="📝 Download Markdown",
-                        data=md_str,
-                        file_name="knowledge_base.md",
-                        mime="text/markdown",
-                        use_container_width=True
-                    )
-            
+                    try:
+                        export_data = export_qa_pairs_to_dict(summary['all_qa_pairs'])
+                        md_lines = ["# Knowledge Base\n"]
+                        for idx, qa in enumerate(export_data, 1):
+                            md_lines.append(f"## QA Pair {idx}\n")
+                            md_lines.append(f"**Question:** {qa['question']}\n")
+                            md_lines.append(f"**Answer:** {qa['answer']}\n")
+                            md_lines.append(f"**Source:** {qa['source']}\n")
+                            md_lines.append("---\n")
+                        
+                        md_str = "\n".join(md_lines)
+                        st.download_button(
+                            label="📝 Download Markdown",
+                            data=md_str,
+                            file_name="knowledge_base.md",
+                            mime="text/markdown",
+                            use_container_width=True
+                        )
+                    except Exception as e:
+                        st.error(f"Markdown export error: {str(e)}")            
             # Show failed conversations if any
             if summary['failed_conversations']:
                 st.markdown("---")
