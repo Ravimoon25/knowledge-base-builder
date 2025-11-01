@@ -1195,7 +1195,7 @@ with st.sidebar:
     st.markdown("---")
     
     st.caption("Built with ❤️ using Streamlit & Claude AI")
-    st.caption("Version 0.4.0")
+    st.caption("Version 1.0.0 - Production Ready")
 
 # Footer
 st.markdown("---")
