@@ -9,6 +9,8 @@ import sys
 import time
 import json
 from src.clusterer import analyze_cluster_quality
+import plotly.express as px
+import plotly.graph_objects as go
 
 sys.path.append('.')  # Add current directory to path
 
@@ -650,7 +652,123 @@ with tab1:
                     )
                     
                     st.plotly_chart(fig, use_container_width=True)
+
+                # 2D Cluster Visualization
+                st.markdown("---")
+                st.markdown("#### 🎨 Cluster Visualization (2D)")
                 
+                st.info("💡 This visualization shows how QA pairs are grouped in 2D space. Each color represents a different cluster.")
+                
+                col1, col2 = st.columns([3, 1])
+                
+                with col2:
+                    viz_method = st.selectbox(
+                        "Reduction Method:",
+                        options=["UMAP", "t-SNE", "PCA"],
+                        index=0,
+                        help="UMAP is recommended for best visualization"
+                    )
+                
+                with col1:
+                    if st.button("🎨 Generate Visualization", key="viz_btn"):
+                        with st.spinner(f"Generating {viz_method} visualization..."):
+                            try:
+                                from src.clusterer import visualize_clusters_2d
+                                import plotly.express as px
+                                
+                                # Get clustered QA pairs
+                                clustered_qa_pairs = st.session_state.clustered_qa_pairs
+                                
+                                # Generate 2D coordinates
+                                coords_2d, cluster_labels = visualize_clusters_2d(
+                                    clustered_qa_pairs,
+                                    method=viz_method.lower()
+                                )
+                                
+                                if len(coords_2d) > 0:
+                                    # Prepare data for plotly
+                                    questions = [qa.get('question', 'No question')[:100] + '...' 
+                                               if len(qa.get('question', '')) > 100 
+                                               else qa.get('question', 'No question')
+                                               for qa in clustered_qa_pairs]
+                                    
+                                    # Create DataFrame
+                                    viz_df = pd.DataFrame({
+                                        'x': coords_2d[:, 0],
+                                        'y': coords_2d[:, 1],
+                                        'cluster': [f"Cluster {c}" if c != -1 else "Noise" 
+                                                  for c in cluster_labels],
+                                        'question': questions,
+                                        'cluster_id': cluster_labels
+                                    })
+                                    
+                                    # Create interactive scatter plot
+                                    fig = px.scatter(
+                                        viz_df,
+                                        x='x',
+                                        y='y',
+                                        color='cluster',
+                                        hover_data=['question'],
+                                        title=f"QA Pairs Clustered by Similarity ({viz_method})",
+                                        labels={'x': f'{viz_method} Dimension 1', 
+                                               'y': f'{viz_method} Dimension 2'},
+                                        color_discrete_sequence=px.colors.qualitative.Set2
+                                    )
+                                    
+                                    fig.update_traces(
+                                        marker=dict(size=12, line=dict(width=1, color='white')),
+                                        hovertemplate='<b>%{customdata[0]}</b><br>' +
+                                                     'Cluster: %{fullData.name}<extra></extra>'
+                                    )
+                                    
+                                    fig.update_layout(
+                                        height=600,
+                                        showlegend=True,
+                                        hovermode='closest',
+                                        plot_bgcolor='rgba(240,242,246,0.5)',
+                                        xaxis=dict(showgrid=True, gridcolor='white'),
+                                        yaxis=dict(showgrid=True, gridcolor='white')
+                                    )
+                                    
+                                    st.plotly_chart(fig, use_container_width=True)
+                                    
+                                    # Store in session state
+                                    st.session_state.cluster_viz = {
+                                        'coords': coords_2d,
+                                        'labels': cluster_labels,
+                                        'method': viz_method
+                                    }
+                                    
+                                    st.success(f"✅ {viz_method} visualization generated!")
+                                    
+                                    # Explanation
+                                    with st.expander("ℹ️ How to read this visualization"):
+                                        st.markdown("""
+                                        **Understanding the plot:**
+                                        - Each **point** represents a QA pair
+                                        - **Colors** indicate different clusters (similar questions)
+                                        - **Proximity** = similarity (closer points = more similar questions)
+                                        - **Hover** over points to see the question
+                                        - Points labeled "Noise" are unique questions that don't fit in any cluster
+                                        
+                                        **What to look for:**
+                                        - Well-separated colored clusters = good clustering
+                                        - Tight clusters = very similar questions
+                                        - Scattered points = diverse questions
+                                        """)
+                                
+                                else:
+                                    st.error("Could not generate visualization")
+                            
+                            except Exception as e:
+                                st.error(f"Visualization error: {str(e)}")
+                                st.exception(e)
+                
+                # Show existing visualization if available
+                if 'cluster_viz' in st.session_state:
+                    viz_data = st.session_state.cluster_viz
+                    st.caption(f"Current visualization: {viz_data['method']}")
+                    
                 # Display Representative QA Pairs
                 st.markdown("---")
                 st.markdown(f"### ⭐ Representative QA Pairs ({len(representatives)} unique)")
