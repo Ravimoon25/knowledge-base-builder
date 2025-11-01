@@ -506,6 +506,252 @@ with tab1:
                 st.metric("Successful", summary['successful'], delta_color="normal")
             with col2:
                 st.metric("Failed", summary['failed'], delta_color="inverse")
+
+            # Add Clustering Section
+            st.markdown("---")
+            st.markdown("### 🎨 Clustering & Deduplication")
+            
+            st.info("💡 Clustering groups similar questions together to identify duplicates and organize your knowledge base")
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                cluster_eps = st.slider(
+                    "Similarity Threshold (eps)",
+                    min_value=0.1,
+                    max_value=0.5,
+                    value=0.3,
+                    step=0.05,
+                    help="Lower = stricter similarity (fewer, tighter clusters). Higher = looser similarity (more, broader clusters)"
+                )
+            
+            with col2:
+                cluster_min_samples = st.slider(
+                    "Min Questions per Cluster",
+                    min_value=2,
+                    max_value=5,
+                    value=2,
+                    step=1,
+                    help="Minimum number of similar questions needed to form a cluster"
+                )
+            
+            with col3:
+                st.metric("Ready to Cluster", f"{summary['total_qa_pairs']} QA pairs")
+            
+            if st.button("🎨 Cluster Similar Questions", type="primary", key="cluster_btn"):
+                with st.spinner("Generating embeddings and clustering..."):
+                    try:
+                        from src.embeddings import get_openai_client, generate_embeddings_for_qa_pairs, estimate_embedding_cost
+                        from src.clusterer import cluster_qa_pairs, get_cluster_representatives, analyze_cluster_quality
+                        
+                        # Get OpenAI client
+                        openai_client = get_openai_client()
+                        
+                        # Estimate and show cost
+                        est_cost = estimate_embedding_cost(summary['total_qa_pairs'])
+                        st.info(f"💰 Estimated embedding cost: ${est_cost:.4f}")
+                        
+                        # Generate embeddings
+                        st.text("Step 1/3: Generating embeddings...")
+                        qa_with_embeddings = generate_embeddings_for_qa_pairs(
+                            summary['all_qa_pairs'],
+                            openai_client
+                        )
+                        
+                        # Cluster
+                        st.text("Step 2/3: Clustering similar questions...")
+                        clustered_qa_pairs, cluster_stats = cluster_qa_pairs(
+                            qa_with_embeddings,
+                            eps=cluster_eps,
+                            min_samples=cluster_min_samples
+                        )
+                        
+                        # Get representatives
+                        st.text("Step 3/3: Selecting representatives...")
+                        representatives = get_cluster_representatives(
+                            cluster_stats['clusters_dict'],
+                            method='centroid'
+                        )
+                        
+                        # Store in session state
+                        st.session_state.clustered_qa_pairs = clustered_qa_pairs
+                        st.session_state.cluster_stats = cluster_stats
+                        st.session_state.cluster_representatives = representatives
+                        
+                        st.success("✅ Clustering complete!")
+                        st.rerun()
+                    
+                    except Exception as e:
+                        st.error(f"❌ Clustering error: {str(e)}")
+                        st.exception(e)
+            
+            # Display Clustering Results
+            if 'cluster_stats' in st.session_state:
+                cluster_stats = st.session_state.cluster_stats
+                representatives = st.session_state.cluster_representatives
+                
+                st.markdown("---")
+                st.markdown("### 📊 Clustering Results")
+                
+                # Metrics
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    st.metric("Clusters Found", cluster_stats['n_clusters'])
+                with col2:
+                    st.metric("Representative QAs", len(representatives))
+                with col3:
+                    reduction = summary['total_qa_pairs'] - len(representatives)
+                    st.metric("Duplicates Removed", reduction, delta=f"-{reduction}")
+                with col4:
+                    if cluster_stats['silhouette_score']:
+                        st.metric("Quality Score", f"{cluster_stats['silhouette_score']:.2f}")
+                    else:
+                        st.metric("Quality Score", "N/A")
+                
+                # Quality Analysis
+                analysis = analyze_cluster_quality(cluster_stats)
+                
+                st.markdown(f"**Clustering Quality:** {analysis['quality']}")
+                
+                if analysis['insights']:
+                    with st.expander("📈 Insights", expanded=True):
+                        for insight in analysis['insights']:
+                            st.info(f"• {insight}")
+                
+                if analysis['recommendations']:
+                    with st.expander("💡 Recommendations"):
+                        for rec in analysis['recommendations']:
+                            st.warning(f"• {rec}")
+                
+                # Show cluster sizes
+                if cluster_stats['cluster_sizes']:
+                    st.markdown("#### 📦 Cluster Distribution")
+                    
+                    import plotly.graph_objects as go
+                    
+                    cluster_ids = list(cluster_stats['cluster_sizes'].keys())
+                    cluster_sizes = list(cluster_stats['cluster_sizes'].values())
+                    
+                    fig = go.Figure(data=[
+                        go.Bar(
+                            x=[f"Cluster {i}" for i in cluster_ids],
+                            y=cluster_sizes,
+                            marker_color='rgb(102, 99, 234)'
+                        )
+                    ])
+                    
+                    fig.update_layout(
+                        title="Number of QA Pairs per Cluster",
+                        xaxis_title="Cluster",
+                        yaxis_title="Number of QA Pairs",
+                        height=400
+                    )
+                    
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                # Display Representative QA Pairs
+                st.markdown("---")
+                st.markdown(f"### ⭐ Representative QA Pairs ({len(representatives)} unique)")
+                
+                st.info(f"📉 Reduced from {summary['total_qa_pairs']} to {len(representatives)} QA pairs ({len(representatives)/summary['total_qa_pairs']*100:.1f}% of original)")
+                
+                # Search representatives
+                search_rep = st.text_input("🔍 Search representatives:", key="search_rep")
+                
+                filtered_reps = representatives
+                if search_rep:
+                    filtered_reps = [
+                        qa for qa in representatives
+                        if search_rep.lower() in qa.get('question', '').lower() or
+                           search_rep.lower() in qa.get('answer', '').lower()
+                    ]
+                
+                st.info(f"Showing {len(filtered_reps)} of {len(representatives)} representatives")
+                
+                # Display representatives
+                for idx, qa in enumerate(filtered_reps, 1):
+                    cluster_id = qa.get('cluster_id', -1)
+                    cluster_size = qa.get('cluster_size', 1)
+                    
+                    if cluster_id == -1:
+                        title = f"QA {idx}: {qa.get('question', 'No question')[:80]}... (Unique)"
+                    else:
+                        title = f"QA {idx}: {qa.get('question', 'No question')[:80]}... (Cluster {cluster_id}, {cluster_size} similar)"
+                    
+                    with st.expander(title, expanded=False):
+                        st.markdown(f"**❓ Question:**")
+                        st.info(qa.get('question', 'No question'))
+                        
+                        st.markdown(f"**✅ Answer:**")
+                        st.success(qa.get('answer', 'No answer'))
+                        
+                        if cluster_size > 1:
+                            st.caption(f"📊 This represents {cluster_size} similar questions")
+                        
+                        st.caption(f"📝 Source: {qa.get('source_conversation', 'unknown')}")
+                
+                # Export Representatives
+                st.markdown("---")
+                st.markdown("### 💾 Export Clustered Knowledge Base")
+                
+                from src.batch_processor import export_qa_pairs_to_dict
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    try:
+                        export_data = export_qa_pairs_to_dict(representatives)
+                        json_str = json.dumps(export_data, indent=2)
+                        st.download_button(
+                            label="📄 Download JSON (Clustered)",
+                            data=json_str,
+                            file_name="knowledge_base_clustered.json",
+                            mime="application/json",
+                            use_container_width=True
+                        )
+                    except Exception as e:
+                        st.error(f"Export error: {str(e)}")
+                
+                with col2:
+                    try:
+                        export_data = export_qa_pairs_to_dict(representatives)
+                        df = pd.DataFrame(export_data)
+                        csv = df.to_csv(index=False)
+                        st.download_button(
+                            label="📊 Download CSV (Clustered)",
+                            data=csv,
+                            file_name="knowledge_base_clustered.csv",
+                            mime="text/csv",
+                            use_container_width=True
+                        )
+                    except Exception as e:
+                        st.error(f"Export error: {str(e)}")
+                
+                with col3:
+                    try:
+                        export_data = export_qa_pairs_to_dict(representatives)
+                        md_lines = ["# Clustered Knowledge Base\n"]
+                        md_lines.append(f"*Reduced from {summary['total_qa_pairs']} to {len(representatives)} unique QA pairs*\n\n")
+                        
+                        for idx, qa in enumerate(export_data, 1):
+                            md_lines.append(f"## QA Pair {idx}\n")
+                            md_lines.append(f"**Question:** {qa['question']}\n")
+                            md_lines.append(f"**Answer:** {qa['answer']}\n")
+                            md_lines.append(f"**Source:** {qa['source']}\n")
+                            md_lines.append("---\n")
+                        
+                        md_str = "\n".join(md_lines)
+                        st.download_button(
+                            label="📝 Download Markdown (Clustered)",
+                            data=md_str,
+                            file_name="knowledge_base_clustered.md",
+                            mime="text/markdown",
+                            use_container_width=True
+                        )
+                    except Exception as e:
+                        st.error(f"Export error: {str(e)}")
+
             
             # Show all extracted QA pairs
             if summary['all_qa_pairs']:
