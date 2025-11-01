@@ -7,6 +7,8 @@ import streamlit as st
 import pandas as pd
 import pandas as pd
 import sys
+import time
+import json
 sys.path.append('.')
 
 # Page configuration - MUST be the first Streamlit command
@@ -376,40 +378,230 @@ with tab1:
                         else:
                             st.text(f"❌ {conv_id}: Failed")
         # Configuration Section
-        st.markdown("### ⚙️ Processing Configuration")
+        st.markdown("---")
+        
+        # Batch Processing Section
+        st.markdown("### ⚙️ Batch Processing Configuration")
         
         col1, col2 = st.columns(2)
         
         with col1:
-            claude_model = st.selectbox(
+            batch_model = st.selectbox(
                 "Select Claude Model",
                 options=[
                     "claude-sonnet-4-5-20250929",
                     "claude-opus-4"
                 ],
                 index=0,
-                help="Claude Sonnet 4.5 is recommended for best balance of speed and quality"
+                help="Claude Sonnet 4.5 is recommended for best balance of speed and quality",
+                key="batch_model"
             )
         
         with col2:
-            clustering_method = st.selectbox(
-                "Clustering Method",
-                options=["Auto-detect", "DBSCAN", "K-Means"],
-                index=0,
-                help="Auto-detect will choose the best method based on your data"
-            )
+            # Calculate total conversations across all files
+            total_convs = 0
+            if 'parsed_conversations' in st.session_state:
+                for convs in st.session_state.parsed_conversations.values():
+                    total_convs += len(convs)
+            
+            st.metric("Total Conversations Ready", total_convs)
         
-        # Process Button
-        st.markdown("### 🚀 Ready to Process?")
+        st.markdown("### 🚀 Ready to Extract Knowledge?")
         
-        col1, col2, col3 = st.columns([1, 2, 1])
+        if total_convs > 0:
+            # Show cost estimation
+            est_cost_per_conv = 0.015  # Rough estimate
+            estimated_total_cost = total_convs * est_cost_per_conv
+            
+            st.info(f"💰 Estimated cost for {total_convs} conversations: ${estimated_total_cost:.2f}")
+            
+            col1, col2, col3 = st.columns([1, 2, 1])
+            
+            with col2:
+                if st.button("🚀 Start Batch Processing", type="primary", use_container_width=True, key="batch_process"):
+                    st.session_state.processing_started = True
         
-        with col2:
-            if st.button("🚀 Start Processing", type="primary", use_container_width=True):
-                st.session_state.processing_started = True
+        # Batch Processing Execution
+        if st.session_state.get('processing_started', False):
+            st.markdown("---")
+            st.markdown("### 🔄 Processing in Progress...")
+            
+            from src.claude_client import get_claude_client
+            from src.batch_processor import process_conversations_batch, aggregate_results, export_qa_pairs_to_dict
+            
+            try:
+                # Get all conversations
+                all_conversations = []
+                if 'parsed_conversations' in st.session_state:
+                    for convs in st.session_state.parsed_conversations.values():
+                        all_conversations.extend(convs)
+                
+                # Progress tracking
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                # Get Claude client
+                client = get_claude_client()
+                
+                # Process conversations
+                results = []
+                total = len(all_conversations)
+                
+                for idx, conversation in enumerate(all_conversations):
+                    # Update progress
+                    progress = (idx + 1) / total
+                    progress_bar.progress(progress)
+                    status_text.text(f"Processing conversation {idx + 1}/{total}: {conversation['id']}")
+                    
+                    # Extract QA pairs
+                    result = extract_qa_pairs(client, conversation, batch_model)
+                    results.append(result)
+                    
+                    # Small delay
+                    if idx < total - 1:
+                        time.sleep(0.5)
+                
+                progress_bar.progress(1.0)
+                status_text.text("✅ Processing complete!")
+                
+                # Aggregate results
+                summary = aggregate_results(results)
+                
+                # Store in session state
+                st.session_state.batch_results = summary
+                st.session_state.processing_started = False
+                
+                # Show success message
                 st.balloons()
-                st.info("🚧 Processing functionality coming soon! Stay tuned.")
+                st.success(f"🎉 Extraction complete! Found {summary['total_qa_pairs']} QA pairs from {summary['successful']} conversations")
+                
+                # Rerun to show results
+                st.rerun()
+            
+            except Exception as e:
+                st.error(f"❌ Error during batch processing: {str(e)}")
+                st.session_state.processing_started = False
+        
+        # Display Batch Results
+        if 'batch_results' in st.session_state:
+            summary = st.session_state.batch_results
+            
+            st.markdown("---")
+            st.markdown("### 📊 Batch Processing Results")
+            
+            # Summary metrics
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("Total Conversations", summary['total_conversations'])
+            with col2:
+                st.metric("QA Pairs Extracted", summary['total_qa_pairs'])
+            with col3:
+                st.metric("Success Rate", f"{summary['success_rate']:.1f}%")
+            with col4:
+                st.metric("Total Cost", f"${summary['total_cost']:.3f}")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Successful", summary['successful'], delta_color="normal")
+            with col2:
+                st.metric("Failed", summary['failed'], delta_color="inverse")
+            
+            # Show all extracted QA pairs
+            if summary['all_qa_pairs']:
+                st.markdown("---")
+                st.markdown(f"### 📚 All Extracted QA Pairs ({len(summary['all_qa_pairs'])} total)")
+                
+                # Search/filter
+                search_query = st.text_input("🔍 Search QA pairs:", key="qa_search")
+                
+                # Filter QA pairs
+                filtered_qa_pairs = summary['all_qa_pairs']
+                if search_query:
+                    filtered_qa_pairs = [
+                        qa for qa in summary['all_qa_pairs']
+                        if search_query.lower() in qa.get('question', '').lower() or
+                           search_query.lower() in qa.get('answer', '').lower()
+                    ]
+                
+                st.info(f"Showing {len(filtered_qa_pairs)} of {len(summary['all_qa_pairs'])} QA pairs")
+                
+                # Display QA pairs
+                for idx, qa in enumerate(filtered_qa_pairs, 1):
+                    with st.expander(f"QA {idx}: {qa.get('question', 'No question')[:80]}...", expanded=False):
+                        st.markdown(f"**❓ Question:**")
+                        st.info(qa.get('question', 'No question'))
+                        
+                        st.markdown(f"**✅ Answer:**")
+                        st.success(qa.get('answer', 'No answer'))
+                        
+                        if 'justification' in qa:
+                            st.markdown(f"**💡 Justification:**")
+                            st.caption(qa['justification'])
+                        
+                        st.caption(f"📝 Source: {qa.get('source_conversation', 'unknown')}")
+                
+                # Export options
+                st.markdown("---")
+                st.markdown("### 💾 Export Knowledge Base")
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    # Export as JSON
+                    import json
+                    export_data = export_qa_pairs_to_dict(summary['all_qa_pairs'])
+                    json_str = json.dumps(export_data, indent=2)
+                    st.download_button(
+                        label="📄 Download JSON",
+                        data=json_str,
+                        file_name="knowledge_base.json",
+                        mime="application/json",
+                        use_container_width=True
+                    )
+                
+                with col2:
+                    # Export as CSV
+                    import pandas as pd
+                    df = pd.DataFrame(export_qa_pairs_to_dict(summary['all_qa_pairs']))
+                    csv = df.to_csv(index=False)
+                    st.download_button(
+                        label="📊 Download CSV",
+                        data=csv,
+                        file_name="knowledge_base.csv",
+                        mime="text/csv",
+                        use_container_width=True
+                    )
+                
+                with col3:
+                    # Export as Markdown
+                    md_lines = ["# Knowledge Base\n"]
+                    for idx, qa in enumerate(export_qa_pairs_to_dict(summary['all_qa_pairs']), 1):
+                        md_lines.append(f"## QA Pair {idx}\n")
+                        md_lines.append(f"**Question:** {qa['question']}\n")
+                        md_lines.append(f"**Answer:** {qa['answer']}\n")
+                        md_lines.append(f"**Source:** {qa['source']}\n")
+                        md_lines.append("---\n")
+                    
+                    md_str = "\n".join(md_lines)
+                    st.download_button(
+                        label="📝 Download Markdown",
+                        data=md_str,
+                        file_name="knowledge_base.md",
+                        mime="text/markdown",
+                        use_container_width=True
+                    )
+            
+            # Show failed conversations if any
+            if summary['failed_conversations']:
+                st.markdown("---")
+                st.markdown("### ⚠️ Failed Conversations")
+                for failed in summary['failed_conversations']:
+                    st.error(f"❌ {failed['id']}: {failed['error']}")
     
+    else:
+        # Show helpful instructions when no files uploaded
+        st.info("👆 Upload your conversation files above to get started")    
     else:
         # Show helpful instructions when no files uploaded
         st.info("👆 Upload your conversation files above to get started")
