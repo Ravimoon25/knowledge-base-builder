@@ -93,6 +93,7 @@ st.markdown('<p class="subtitle">Transform customer conversations into structure
 tab1, tab2, tab3 = st.tabs(["📁 Upload & Process", "ℹ️ About", "📊 Stats"])
 
 with tab1:
+    st.success("🎉 **Production Ready!** This app is fully functional with AI extraction, clustering, and visualization.")
     # File Upload Section
     st.markdown("### 📁 Upload Your Conversation Data")
     
