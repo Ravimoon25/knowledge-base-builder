@@ -5,11 +5,11 @@ Main Streamlit Application
 
 import streamlit as st
 import pandas as pd
-import pandas as pd
 import sys
 import time
 import json
-sys.path.append('.')
+
+sys.path.append('.')  # Add current directory to path
 
 # Page configuration - MUST be the first Streamlit command
 st.set_page_config(
@@ -268,9 +268,8 @@ with tab1:
                 
                 except Exception as e:
                     st.error(f"❌ Error parsing conversations: {str(e)}")
-                    st.info("💡 Make sure your file has 'speaker' and 'message' columns (or similar)")        
-        st.markdown("---")
-
+                    st.info("💡 Make sure your file has 'speaker' and 'message' columns (or similar)")
+        
         st.markdown("---")
         
         # Single Conversation Extraction Demo
@@ -377,7 +376,7 @@ with tab1:
                             st.text(f"✅ {conv_id}: {result['num_qa_pairs']} QA pairs (${result['estimated_cost']:.4f})")
                         else:
                             st.text(f"❌ {conv_id}: Failed")
-        # Configuration Section
+        
         st.markdown("---")
         
         # Batch Processing Section
@@ -427,7 +426,8 @@ with tab1:
             st.markdown("### 🔄 Processing in Progress...")
             
             from src.claude_client import get_claude_client
-            from src.batch_processor import process_conversations_batch, aggregate_results, export_qa_pairs_to_dict
+            from src.batch_processor import aggregate_results, export_qa_pairs_to_dict
+            from src.extractor import extract_qa_pairs
             
             try:
                 # Get all conversations
@@ -549,7 +549,6 @@ with tab1:
                 
                 with col1:
                     # Export as JSON
-                    import json
                     export_data = export_qa_pairs_to_dict(summary['all_qa_pairs'])
                     json_str = json.dumps(export_data, indent=2)
                     st.download_button(
@@ -562,7 +561,6 @@ with tab1:
                 
                 with col2:
                     # Export as CSV
-                    import pandas as pd
                     df = pd.DataFrame(export_qa_pairs_to_dict(summary['all_qa_pairs']))
                     csv = df.to_csv(index=False)
                     st.download_button(
@@ -599,6 +597,32 @@ with tab1:
                 for failed in summary['failed_conversations']:
                     st.error(f"❌ {failed['id']}: {failed['error']}")
     
+    else:
+        # Show helpful instructions when no files uploaded
+        st.info("👆 Upload your conversation files above to get started")
+        
+        st.markdown("### 📋 Expected File Format")
+        
+        st.markdown("""
+        Your conversation files should contain:
+        - **Speaker identification** (Agent/Customer)
+        - **Message text** (What was said)
+        - **Optional**: Timestamp, conversation ID
+        
+        **Example CSV format:**
+        """)
+        
+        example_data = pd.DataFrame({
+            'speaker': ['Agent', 'Customer', 'Agent', 'Customer'],
+            'message': [
+                'Hello! How can I help you today?',
+                'I need help with my refund policy',
+                'I can help you with that. Our refund policy allows...',
+                'Thank you, that\'s helpful!'
+            ]
+        })
+        
+        st.dataframe(example_data, use_container_width=True)
 
 with tab2:
     # About section
@@ -637,9 +661,9 @@ with tab2:
     st.markdown("""
     1. **Upload Conversations** → Upload your customer-agent conversation transcripts
     2. **AI Extraction** → Claude analyzes conversations and extracts meaningful QA pairs
-    3. **Smart Clustering** → Similar questions are automatically grouped together
-    4. **Deduplication** → Redundant information is identified and removed
-    5. **Representative Selection** → Best QA pairs are selected for each topic
+    3. **Smart Clustering** → Similar questions are automatically grouped together (coming soon)
+    4. **Deduplication** → Redundant information is identified and removed (coming soon)
+    5. **Representative Selection** → Best QA pairs are selected for each topic (coming soon)
     6. **Export** → Download your curated knowledge base
     """)
     
@@ -653,14 +677,14 @@ with tab2:
         st.markdown("""
         - **Framework:** Streamlit
         - **AI Model:** Anthropic Claude Sonnet 4.5
-        - **Embeddings:** OpenAI
-        - **Clustering:** scikit-learn (DBSCAN)
+        - **Embeddings:** OpenAI (coming soon)
+        - **Clustering:** scikit-learn (coming soon)
         """)
     
     with col2:
         st.markdown("""
         - **Data Processing:** Pandas
-        - **Visualization:** Plotly
+        - **Visualization:** Plotly (coming soon)
         - **Language:** Python 3.9+
         """)
 
@@ -673,7 +697,7 @@ with tab3:
     with col1:
         st.markdown("""
         <div class="metric-card">
-        <h3>0.1.0</h3>
+        <h3>0.4.0</h3>
         <p>Version</p>
         </div>
         """, unsafe_allow_html=True)
@@ -681,7 +705,7 @@ with tab3:
     with col2:
         st.markdown("""
         <div class="metric-card">
-        <h3>25%</h3>
+        <h3>50%</h3>
         <p>Complete</p>
         </div>
         """, unsafe_allow_html=True)
@@ -689,7 +713,7 @@ with tab3:
     with col3:
         st.markdown("""
         <div class="metric-card">
-        <h3>2/8</h3>
+        <h3>4/8</h3>
         <p>Milestones</p>
         </div>
         """, unsafe_allow_html=True)
@@ -697,8 +721,8 @@ with tab3:
     with col4:
         st.markdown("""
         <div class="metric-card">
-        <h3>🚧</h3>
-        <p>In Progress</p>
+        <h3>🚀</h3>
+        <p>Active</p>
         </div>
         """, unsafe_allow_html=True)
     
@@ -709,11 +733,11 @@ with tab3:
     progress_data = {
         "✅ Project Setup": 100,
         "✅ File Upload Interface": 100,
-        "🚧 Data Parsing": 0,
-        "🚧 AI Extraction": 0,
+        "✅ Data Parsing": 100,
+        "✅ AI Extraction": 100,
+        "✅ Batch Processing": 100,
         "🚧 Clustering": 0,
         "🚧 Representative Selection": 0,
-        "🚧 Export Functionality": 0,
         "🚧 Final Polish": 0
     }
     
@@ -735,8 +759,8 @@ with st.sidebar:
     st.markdown("""
     1. Upload your files
     2. Preview the data
-    3. Configure settings
-    4. Start processing
+    3. Try single extraction
+    4. Run batch processing
     5. Download results
     """)
     
@@ -751,7 +775,6 @@ with st.sidebar:
     """)
     
     st.markdown("---")
-
     
     st.header("🔧 API Status")
     
@@ -769,6 +792,8 @@ with st.sidebar:
             except Exception as e:
                 st.error(f"❌ Error: {str(e)}")
     
+    st.markdown("---")
+    
     st.header("🔗 Links")
     st.markdown("""
     - [GitHub Repo](https://github.com/Ravimoon25/knowledge-base-builder)
@@ -778,7 +803,7 @@ with st.sidebar:
     st.markdown("---")
     
     st.caption("Built with ❤️ using Streamlit & Claude AI")
-    st.caption("Version 0.1.0")
+    st.caption("Version 0.4.0")
 
 # Footer
 st.markdown("---")
